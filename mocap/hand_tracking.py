@@ -3,6 +3,7 @@ import matplotlib
 matplotlib.use("TkAgg")  # Macの場合は "MacOSX" に変更してください
 
 from matplotlib import pyplot as plt
+from dataclasses import dataclass
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -25,6 +26,49 @@ hands_r = mp_hands.Hands(
     min_detection_confidence=0.7,
     min_tracking_confidence=0.7,
 )
+
+
+def _landmarks_to_pos_rot(
+    ld_x: list[float], ld_y: list[float], ld_z: list[float], offset_idx=0
+):
+    wrist = np.array([ld_x[offset_idx], ld_y[offset_idx], ld_z[offset_idx]])
+    index_base = np.array(
+        [ld_x[5 + offset_idx], ld_y[5 + offset_idx], ld_z[5 + offset_idx]]
+    )
+    middle_base = np.array(
+        [ld_x[9 + offset_idx], ld_y[9 + offset_idx], ld_z[9 + offset_idx]]
+    )
+    ring_base = np.array(
+        [ld_x[13 + offset_idx], ld_y[13 + offset_idx], ld_z[13 + offset_idx]]
+    )
+
+    # ベクトルを計算
+    v1 = index_base - wrist
+    v2 = middle_base - wrist
+    v3 = ring_base - wrist
+
+    # 正規化
+    v1 /= np.linalg.norm(v1)
+    v2 /= np.linalg.norm(v2)
+    v3 /= np.linalg.norm(v3)
+
+    # 回転行列の計算（簡易的な方法）
+    z_axis = (v1 + v2 + v3) / 3.0
+    z_axis /= np.linalg.norm(z_axis)
+    x_axis = np.cross(v1, v2)
+    x_axis /= np.linalg.norm(x_axis)
+    y_axis = np.cross(z_axis, x_axis)
+
+    rot_matrix = np.vstack([x_axis, y_axis, z_axis]).T
+    rotation = R.from_matrix(rot_matrix).as_quat()  # クォータニオンに変換
+
+    return wrist, rotation  # 位置と回転を返す
+
+
+@dataclass
+class HandTrans:
+    pos: np.ndarray
+    rot: np.ndarray
 
 
 class Hand3DTracker:
@@ -52,11 +96,16 @@ class Hand3DTracker:
         self.ax.set_ylim(-0.5, 0.5)
         self.ax.set_zlim(-0.5, 0.5)
         self.plt_x, self.plt_y, self.plt_z = (
-            [0] * self.NUM_HAND_LANDMARKS * 2,
-            [0] * self.NUM_HAND_LANDMARKS * 2,
-            [0] * self.NUM_HAND_LANDMARKS * 2,
+            [0.0] * self.NUM_HAND_LANDMARKS * 2,
+            [0.0] * self.NUM_HAND_LANDMARKS * 2,
+            [0.0] * self.NUM_HAND_LANDMARKS * 2,
         )
         (self.plt_point,) = self.ax.plot([self.plt_x], [self.plt_y], [self.plt_z], "ro")
+
+        self.render_3d_hands = False
+
+        self._l_hand_3d_: HandTrans = HandTrans(np.zeros(3), np.zeros(4))
+        self._r_hand_3d_: HandTrans = HandTrans(np.zeros(3), np.zeros(4))
 
     def track_hands(self, frame):
         # Process the frame and return 3D hand landmarks
@@ -124,32 +173,76 @@ class Hand3DTracker:
             plt.pause(0.001)
             return True
 
-        for i in range(2):
-            hand1 = results.multi_hand_landmarks[i]
-            hand2 = results2.multi_hand_landmarks[i]
-            pts1 = np.array(
-                [
-                    [lm.x * self.frame1.shape[1], lm.y * self.frame1.shape[0]]
-                    for lm in hand1.landmark
-                ],
-                dtype=np.float32,
-            )
-            pts2 = np.array(
-                [
-                    [lm.x * self.frame2.shape[1], lm.y * self.frame2.shape[0]]
-                    for lm in hand2.landmark
-                ],
-                dtype=np.float32,
-            )
-            points_3d = [self.tri.triangulate(p1, p2) for p1, p2 in zip(pts1, pts2)]
-            for k, point in enumerate(points_3d):
-                print(f"Landmark {k} {i}: {point}")  # 3D座標を表示
-                self.plt_x[k + i * self.NUM_HAND_LANDMARKS] = point[0]
-                self.plt_y[k + i * self.NUM_HAND_LANDMARKS] = point[1]
-                self.plt_z[k + i * self.NUM_HAND_LANDMARKS] = point[2]
+        if self.render_3d_hands:
+            for i in range(2):
+                hand1 = results.multi_hand_landmarks[i]
+                hand2 = results2.multi_hand_landmarks[i]
+                pts1 = np.array(
+                    [
+                        [lm.x * self.frame1.shape[1], lm.y * self.frame1.shape[0]]
+                        for lm in hand1.landmark
+                    ],
+                    dtype=np.float32,
+                )
+                pts2 = np.array(
+                    [
+                        [lm.x * self.frame2.shape[1], lm.y * self.frame2.shape[0]]
+                        for lm in hand2.landmark
+                    ],
+                    dtype=np.float32,
+                )
+                points_3d = [self.tri.triangulate(p1, p2) for p1, p2 in zip(pts1, pts2)]
+                for k, point in enumerate(points_3d):
+                    print(f"Landmark {k} {i}: {point}")  # 3D座標を表示
+                    self.plt_x[k + i * self.NUM_HAND_LANDMARKS] = point[0]
+                    self.plt_y[k + i * self.NUM_HAND_LANDMARKS] = point[1]
+                    self.plt_z[k + i * self.NUM_HAND_LANDMARKS] = point[2]
+                self.plt_point.set_data(self.plt_x, self.plt_y)
+                self.plt_point.set_3d_properties(self.plt_z)  # type: ignore
+        else:
+            for i in range(2):
+                hand1 = results.multi_hand_landmarks[i]
+                hand2 = results2.multi_hand_landmarks[i]
+                pts1 = np.array(
+                    [
+                        [lm.x * self.frame1.shape[1], lm.y * self.frame1.shape[0]]
+                        for lm in hand1.landmark
+                    ],
+                    dtype=np.float32,
+                )
+                pts2 = np.array(
+                    [
+                        [lm.x * self.frame2.shape[1], lm.y * self.frame2.shape[0]]
+                        for lm in hand2.landmark
+                    ],
+                    dtype=np.float32,
+                )
+                points_3d = [self.tri.triangulate(p1, p2) for p1, p2 in zip(pts1, pts2)]
+                for k, point in enumerate(points_3d):
+                    print(f"Landmark {k} {i}: {point}")  # 3D座標を表示
+                    self.plt_x[k + i * self.NUM_HAND_LANDMARKS] = point[0]
+                    self.plt_y[k + i * self.NUM_HAND_LANDMARKS] = point[1]
+                    self.plt_z[k + i * self.NUM_HAND_LANDMARKS] = point[2]
 
-        self.plt_point.set_data(self.plt_x, self.plt_y)
-        self.plt_point.set_3d_properties(self.plt_z)  # type: ignore
+                wrist, rotation = _landmarks_to_pos_rot(
+                    self.plt_x,
+                    self.plt_y,
+                    self.plt_z,
+                    offset_idx=i * self.NUM_HAND_LANDMARKS,
+                )
+                print(f"Hand {i} Wrist Position: {wrist}, Rotation (quat): {rotation}")
+                if i == 0:
+                    self._l_hand_3d_ = HandTrans(wrist, rotation)
+                else:
+                    self._r_hand_3d_ = HandTrans(wrist, rotation)
+                self.plt_point.set_data(
+                    [self._l_hand_3d_.pos[0], self._r_hand_3d_.pos[0]],
+                    [self._l_hand_3d_.pos[1], self._r_hand_3d_.pos[1]],
+                )
+                self.plt_point.set_3d_properties(  # type: ignore
+                    [self._l_hand_3d_.pos[2], self._r_hand_3d_.pos[2]]
+                )
+
         plt.draw()
         plt.pause(0.001)
 

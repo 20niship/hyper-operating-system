@@ -1,0 +1,41 @@
+<mujoco model="dual_so101_parallel">
+  <compiler angle="radian" />
+  
+  <option gravity="0 0 -9.81" timestep="0.002" />
+  
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0" />
+    <rgba haze="0.15 0.25 0.35 1" />
+    <global azimuth="120" elevation="-20" />
+  </visual>
+  
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072" />
+    <texture name="grid" type="2d" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300" />
+    <material name="grid" texture="grid" texrepeat="8 8" reflectance="0.2" />
+  </asset>
+
+  <worldbody>
+    <!-- Ground plane -->
+    <geom name="floor" pos="0 0 0" size="10 10 0.1" type="plane" material="grid" />
+    
+    <!-- Lighting -->
+    <light name="top" pos="0 0 3" dir="0 0 -1" diffuse="0.7 0.7 0.7" />
+    <light name="side1" pos="3 3 2" dir="-1 -1 -1" diffuse="0.4 0.4 0.4" />
+    <light name="side2" pos="-3 -3 2" dir="1 1 -1" diffuse="0.4 0.4 0.4" />
+    
+    <!-- Robot 1 - Left position -->
+    <body name="robot1_mount" pos="-0.5 0 0.1">
+      <include file="so101_new_calib.xml" />
+    </body>
+    
+    <!-- Robot 2 - Right position -->
+    <body name="robot2_mount" pos="0.5 0 0.1">
+      <include file="so101_new_calib.xml" />
+    </body>
+    
+    <!-- Camera for viewing the scene -->
+    <camera name="overview" mode="free" fovy="60" pos="0 -2 1.5" xyaxes="1 0 0 0 0.5 1" />
+    <camera name="side_view" mode="free" fovy="60" pos="2 0 1" xyaxes="0 1 0 0 0 1" />
+  </worldbody>
+</mujoco>

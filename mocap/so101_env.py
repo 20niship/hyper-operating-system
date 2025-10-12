@@ -1,5 +1,6 @@
 from pathlib import Path
 import mujoco
+import numpy as np
 
 MODEL = Path(__file__).parent.parent / "SO101/dual_so101_scene.xml"
 
@@ -7,12 +8,13 @@ MODEL = Path(__file__).parent.parent / "SO101/dual_so101_scene.xml"
 class SO101MultiEnv:
     def __init__(self, n_substeps=20):
         self.model = mujoco.MjModel.from_xml_path(str(MODEL))  # type: ignore
-        self.sim = mujoco.MjData(self.model)  # type: ignore
+        self.data = mujoco.MjData(self.model)  # type: ignore
         self.viewer = None
 
     def step(self, action):
-        self.sim.data.ctrl[:] = action
-        self.sim.step()
+        self.data.ctrl[:] = action
+        for _ in range(20):
+            mujoco.mj_step(self.model, self.data)  # type: ignore
         obs = self._get_obs()
         reward = self._compute_reward()
         done = self._check_done()
@@ -20,7 +22,7 @@ class SO101MultiEnv:
         return obs, reward, done, info
 
     def reset(self):
-        self.sim.reset()
+        mujoco.mj_resetData(self.model, self.data)  # type: ignore
         return self._get_obs()
 
     def render(self, mode="human"):
@@ -29,7 +31,7 @@ class SO101MultiEnv:
         self.viewer.render()
 
     def _get_obs(self):
-        return self.sim.data.qpos.flatten()
+        return self.data.qpos.copy(), self.data.qvel.copy()
 
     def _compute_reward(self):
         # Placeholder for reward computation logic
@@ -47,8 +49,10 @@ class SO101MultiEnv:
 if __name__ == "__main__":
     env = SO101MultiEnv()
     obs = env.reset()
+    action = env.data.ctrl
+    print("Action shape:", action.shape)
     for _ in range(1000):
-        action = env.sim.data.ctrl + 0.01  # Dummy action
+        act = np.random.uniform(-1, 1, size=action.shape)
         obs, reward, done, info = env.step(action)
         env.render()
         if done:

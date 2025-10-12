@@ -7,13 +7,19 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-from mocap.stereo_tri import StereoCalibrator
+from stereo_tri import StereoCalibrator
 
 mp_hands = mp.solutions.hands  # type: ignore
 mp_drawing = mp.solutions.drawing_utils  # type: ignore
 
 # MediaPipe Hands のインスタンスを作成
-hands = mp_hands.Hands(
+hands_l = mp_hands.Hands(
+    static_image_mode=False,
+    max_num_hands=2,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7,
+)
+hands_r = mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=2,
     min_detection_confidence=0.7,
@@ -22,6 +28,8 @@ hands = mp_hands.Hands(
 
 
 class Hand3DTracker:
+    NUM_HAND_LANDMARKS = 21  # left, right
+
     def __init__(self, cam_l_idx=0, cam_r_idx=1):
         self.cap1 = cv2.VideoCapture(cam_l_idx)
         self.cap2 = cv2.VideoCapture(cam_r_idx)
@@ -40,14 +48,13 @@ class Hand3DTracker:
 
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111, projection="3d")
-        self.ax.set_xlim(-1, 1)
-        self.ax.set_ylim(-1, 1)
-        self.ax.set_zlim(-1, 1)
-        NUM_HAND_LANDMARKS = 21 * 2  # left, right
+        self.ax.set_xlim(-0.5, 0.5)
+        self.ax.set_ylim(-0.5, 0.5)
+        self.ax.set_zlim(-0.5, 0.5)
         self.plt_x, self.plt_y, self.plt_z = (
-            [0] * NUM_HAND_LANDMARKS,
-            [0] * NUM_HAND_LANDMARKS,
-            [0] * NUM_HAND_LANDMARKS,
+            [0] * self.NUM_HAND_LANDMARKS * 2,
+            [0] * self.NUM_HAND_LANDMARKS * 2,
+            [0] * self.NUM_HAND_LANDMARKS * 2,
         )
         (self.plt_point,) = self.ax.plot([self.plt_x], [self.plt_y], [self.plt_z], "ro")
 
@@ -103,13 +110,23 @@ class Hand3DTracker:
         rgb_f1 = cv2.cvtColor(self.frame1, cv2.COLOR_BGR2RGB)
         rgb_f2 = cv2.cvtColor(self.frame2, cv2.COLOR_BGR2RGB)
 
-        results = hands.process(rgb_f1)
-        results2 = hands.process(rgb_f2)
+        results = hands_l.process(rgb_f1)
+        results2 = hands_r.process(rgb_f2)
         self._render(results, results2)
 
-        if results.multi_hand_landmarks and results2.multi_hand_landmarks:
-            hand1 = results.multi_hand_landmarks[0]
-            hand2 = results2.multi_hand_landmarks[0]
+        found_l = results.multi_hand_landmarks and len(results.multi_hand_landmarks) > 1
+        found_r = (
+            results2.multi_hand_landmarks and len(results2.multi_hand_landmarks) > 1
+        )
+        if not found_l or not found_r:
+            print("....")
+            plt.draw()
+            plt.pause(0.001)
+            return True
+
+        for i in range(2):
+            hand1 = results.multi_hand_landmarks[i]
+            hand2 = results2.multi_hand_landmarks[i]
             pts1 = np.array(
                 [
                     [lm.x * self.frame1.shape[1], lm.y * self.frame1.shape[0]]
@@ -125,11 +142,11 @@ class Hand3DTracker:
                 dtype=np.float32,
             )
             points_3d = [self.tri.triangulate(p1, p2) for p1, p2 in zip(pts1, pts2)]
-            for i, point in enumerate(points_3d):
-                print(f"Landmark {i}: {point}")  # 3D座標を表示
-                self.plt_x[i] = point[0]
-                self.plt_y[i] = point[1]
-                self.plt_z[i] = point[2]
+            for k, point in enumerate(points_3d):
+                print(f"Landmark {k} {i}: {point}")  # 3D座標を表示
+                self.plt_x[k + i * self.NUM_HAND_LANDMARKS] = point[0]
+                self.plt_y[k + i * self.NUM_HAND_LANDMARKS] = point[1]
+                self.plt_z[k + i * self.NUM_HAND_LANDMARKS] = point[2]
 
         self.plt_point.set_data(self.plt_x, self.plt_y)
         self.plt_point.set_3d_properties(self.plt_z)  # type: ignore
@@ -141,45 +158,7 @@ class Hand3DTracker:
     def close(self):
         self.cap1.release()
         self.cap2.release()
-        hands.close()
         cv2.destroyAllWindows()
-
-
-def _get_hand_quat(landmarks, image_width, image_height):
-    # 主要なランドマークを取得
-    wrist = np.array(
-        [landmarks[0].x * image_width, landmarks[0].y * image_height, landmarks[0].z]
-    )
-    index_mcp = np.array(
-        [landmarks[5].x * image_width, landmarks[5].y * image_height, landmarks[5].z]
-    )
-    pinky_mcp = np.array(
-        [landmarks[17].x * image_width, landmarks[17].y * image_height, landmarks[17].z]
-    )
-    middle_mcp = np.array(
-        [landmarks[9].x * image_width, landmarks[9].y * image_height, landmarks[9].z]
-    )
-
-    # 手のローカル座標系を定義
-    x_axis = pinky_mcp - index_mcp
-    x_axis /= np.linalg.norm(x_axis)
-
-    y_axis = middle_mcp - wrist
-    y_axis /= np.linalg.norm(y_axis)
-
-    z_axis = np.cross(x_axis, y_axis)
-    z_axis /= np.linalg.norm(z_axis)
-
-    # 再直交化 (Gram-Schmidt)
-    y_axis = np.cross(z_axis, x_axis)
-    y_axis /= np.linalg.norm(y_axis)
-
-    # 回転行列
-    R_mat = np.stack([x_axis, y_axis, z_axis], axis=1)
-
-    # クオータニオンに変換
-    quat = R.from_matrix(R_mat).as_quat()  # (x, y, z, w)
-    return quat
 
 
 if __name__ == "__main__":

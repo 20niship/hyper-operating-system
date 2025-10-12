@@ -172,7 +172,11 @@ class StereoCalibrator:
         with open(filepath, "w") as f:
             json.dump(data, f)
 
-    def load(self, filepath):
+    def load(self, filepath) -> bool:
+        if not Path(filepath).exists():
+            print(f"File {filepath} does not exist.")
+            return False
+
         # キャリブレーション結果読み込み
         with open(filepath, "r") as f:
             data = json.load(f)
@@ -184,6 +188,7 @@ class StereoCalibrator:
         self.T = np.array(data["T"]) if data["T"] is not None else None
         self.P1 = np.array(data["P1"]) if data["P1"] is not None else None
         self.P2 = np.array(data["P2"]) if data["P2"] is not None else None
+        return True
 
     def get_projection_matrices(self):
         return self.P1, self.P2

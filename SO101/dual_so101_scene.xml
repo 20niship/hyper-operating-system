@@ -2,6 +2,32 @@
   <compiler angle="radian" />
   
   <option gravity="0 0 -9.81" timestep="0.002" />
+
+  <default>
+    <default class="so101_new_calib">
+      <joint damping="1" frictionloss="0.1" armature="0.005"/>
+      <position kp="50"/>
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+      </default>
+      <default class="collision">
+        <geom group="3"/>
+      </default>
+    </default>
+  </default>
+  <!-- Additional joints_properties.xml -->
+  <default>
+    <default class="sts3215">
+      <geom contype="0" conaffinity="0"/>
+      <joint damping="0.60" frictionloss="0.052" armature="0.028"/>
+      <!-- For lerobot this are not exactly the motor params as the Kp and Kd not map 1-to-1 thus motor idendification with lerobot Kp=16 and Kd=32 should actually be done -->
+      <position kp="17.8"/>
+    </default>
+    <default class="backlash">
+      <!-- +/- 0.5° of backlash -->
+      <joint damping="0.01" frictionloss="0" armature="0.01" limited="true" range="-0.008726646259971648 0.008726646259971648"/>
+    </default>
+  </default>
   
   <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0" />
@@ -13,6 +39,33 @@
     <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072" />
     <texture name="grid" type="2d" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300" />
     <material name="grid" texture="grid" texrepeat="8 8" reflectance="0.2" />
+
+    <mesh file="assets/waveshare_mounting_plate_so101_v2.stl"/>
+    <mesh file="assets/sts3215_03a_v1.stl"/>
+    <mesh file="assets/motor_holder_so101_base_v1.stl"/>
+    <mesh file="assets/wrist_roll_follower_so101_v1.stl"/>
+    <mesh file="assets/moving_jaw_so101_v1.stl"/>
+    <mesh file="assets/base_motor_holder_so101_v1.stl"/>
+    <mesh file="assets/upper_arm_so101_v1.stl"/>
+    <mesh file="assets/wrist_roll_pitch_so101_v2.stl"/>
+    <mesh file="assets/under_arm_so101_v1.stl"/>
+    <mesh file="assets/rotation_pitch_so101_v1.stl"/>
+    <mesh file="assets/motor_holder_so101_wrist_v1.stl"/>
+    <mesh file="assets/sts3215_03a_no_horn_v1.stl"/>
+    <mesh file="assets/base_so101_v2.stl"/>
+    <material name="base_motor_holder_so101_v1_material" rgba="1 0.82 0.12 1"/>
+    <material name="base_so101_v2_material" rgba="1 0.82 0.12 1"/>
+    <material name="sts3215_03a_v1_material" rgba="0.1 0.1 0.1 1"/>
+    <material name="waveshare_mounting_plate_so101_v2_material" rgba="1 0.82 0.12 1"/>
+    <material name="motor_holder_so101_base_v1_material" rgba="1 0.82 0.12 1"/>
+    <material name="rotation_pitch_so101_v1_material" rgba="1 0.82 0.12 1"/>
+    <material name="upper_arm_so101_v1_material" rgba="1 0.82 0.12 1"/>
+    <material name="under_arm_so101_v1_material" rgba="1 0.82 0.12 1"/>
+    <material name="motor_holder_so101_wrist_v1_material" rgba="1 0.82 0.12 1"/>
+    <material name="sts3215_03a_no_horn_v1_material" rgba="0.1 0.1 0.1 1.0"/>
+    <material name="wrist_roll_pitch_so101_v2_material" rgba="1 0.82 0.12 1"/>
+    <material name="wrist_roll_follower_so101_v1_material" rgba="1 0.82 0.12 1"/>
+    <material name="moving_jaw_so101_v1_material" rgba="1 0.82 0.12 1"/>
   </asset>
 
   <worldbody>
@@ -26,16 +79,31 @@
     
     <!-- Robot 1 - Left position -->
     <body name="robot1_mount" pos="-0.5 0 0.1">
-      <include file="so101_new_calib.xml" />
+      <include file="so101.xml" />
     </body>
     
-    <!-- Robot 2 - Right position -->
+    Robot 2 - Right position
     <body name="robot2_mount" pos="0.5 0 0.1">
-      <include file="so101_new_calib.xml" />
+      <include file="so101_2.xml" />
     </body>
-    
-    <!-- Camera for viewing the scene -->
-    <camera name="overview" mode="free" fovy="60" pos="0 -2 1.5" xyaxes="1 0 0 0 0.5 1" />
-    <camera name="side_view" mode="free" fovy="60" pos="2 0 1" xyaxes="0 1 0 0 0 1" />
   </worldbody>
+
+  <equality/>
+  <actuator>
+    <position class="sts3215" name="shoulder_pan" joint="shoulder_pan" forcerange="-3.35 3.35" ctrlrange="-1.91986 1.91986"/>
+    <position class="sts3215" name="shoulder_lift" joint="shoulder_lift" forcerange="-3.35 3.35" ctrlrange="-1.74533 1.74533"/>
+    <position class="sts3215" name="elbow_flex" joint="elbow_flex" forcerange="-3.35 3.35" ctrlrange="-1.69 1.69"/>
+    <position class="sts3215" name="wrist_flex" joint="wrist_flex" forcerange="-3.35 3.35" ctrlrange="-1.65806 1.65806"/>
+    <position class="sts3215" name="wrist_roll" joint="wrist_roll" forcerange="-3.35 3.35" ctrlrange="-2.74385 2.84121"/>
+    <position class="sts3215" name="gripper" joint="gripper" forcerange="-3.35 3.35" ctrlrange="-0.17453 1.74533"/>
+
+    <position class="sts3215" name="shoulder_pan_2" joint="shoulder_pan" forcerange="-3.35 3.35" ctrlrange="-1.91986 1.91986"/>
+    <position class="sts3215" name="shoulder_lift_2" joint="shoulder_lift_2" forcerange="-3.35 3.35" ctrlrange="-1.74533 1.74533"/>
+    <position class="sts3215" name="elbow_flex_2" joint="elbow_flex_2" forcerange="-3.35 3.35" ctrlrange="-1.69 1.69"/>
+    <position class="sts3215" name="wrist_flex_2" joint="wrist_flex_2" forcerange="-3.35 3.35" ctrlrange="-1.65806 1.65806"/>
+    <position class="sts3215" name="wrist_roll_2" joint="wrist_roll_2" forcerange="-3.35 3.35" ctrlrange="-2.74385 2.84121"/>
+    <position class="sts3215" name="gripper_2" joint="gripper_2" forcerange="-3.35 3.35" ctrlrange="-0.17453 1.74533"/>
+  </actuator>
+
+  <equality/>
 </mujoco>

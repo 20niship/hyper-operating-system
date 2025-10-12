@@ -7,6 +7,7 @@ requires-python = "==3.12.12"
 dependencies = [
     "ikpy>=3.4.2",
     "mediapipe",
+    "mujoco>=3.3.6",
     "numpy>=1.26.4",
     "opencv-python>=4.11.0.86",
     "pybullet>=3.2.7",
@@ -15,6 +16,7 @@ dependencies = [
     "pyqtgraph>=0.13.7",
     "pyside2>=5.15.2.1",
     "scipy>=1.16.2",
+    "setuptools>=80.9.0",
     "tk>=0.1.0",
     "urdf2mjcf>=0.2.39",
     "vispy>=0.15.2",

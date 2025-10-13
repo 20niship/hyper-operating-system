@@ -5,8 +5,8 @@ cap = cv2.VideoCapture(0)
 cap2 = cv2.VideoCapture(2)
 print("cap.isOpened()", cap.isOpened())
 print("cap2.isOpened()", cap2.isOpened())
-cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG")) # type: ignore
+cap2.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG")) # type: ignore
 print("set CAP_PROP_FOURCC", cap.get(cv2.CAP_PROP_FOURCC))
 while True:
     ret, frame = cap.read()

@@ -30,7 +30,7 @@ class URDFInverseKinematics:
         assert len(target_pos) == 3
         assert len(target_quat) == 4
         self.target_pos = target_pos
-        self.target_quat = target_quat
+        # self.target_quat = target_quat
 
         joint_angles = p.calculateInverseKinematics(
             self.robot,
@@ -49,7 +49,7 @@ class URDFInverseKinematics:
                 i,
                 p.POSITION_CONTROL,
                 targetPosition=joint_angles[i],
-                force=500,
+                force=5000,
             )
 
         p.addUserDebugLine([0, 0, 0], self.target_pos, [1, 0, 0], 3, lifeTime=0.1)

@@ -98,28 +98,32 @@ class Hand3DTracker:
         if not self.tri.load("stereo_calib.json"):
             raise ValueError("Failed to load stereo calibration data")
 
-        self.fig = plt.figure()
-        self.ax = self.fig.add_subplot(111, projection="3d")
-        self.ax.set_xlim(-0.5, 0.5)
-        self.ax.set_ylim(-0.5, 0.5)
-        self.ax.set_zlim(-0.5, 0.5)
-        self.plt_x, self.plt_y, self.plt_z = (
-            [0.0] * self.NUM_HAND_LANDMARKS * 2,
-            [0.0] * self.NUM_HAND_LANDMARKS * 2,
-            [0.0] * self.NUM_HAND_LANDMARKS * 2,
-        )
-        (self.plt_point,) = self.ax.plot([self.plt_x], [self.plt_y], [self.plt_z], "ro")
-
         self.render_3d_hands = False
 
         self._l_hand_3d_: HandTrans = HandTrans(np.zeros(3), np.zeros(4))
         self._r_hand_3d_: HandTrans = HandTrans(np.zeros(3), np.zeros(4))
 
-        # ARマーカー関連の初期化
         self.trans_ = np.eye(4)
         self._coord_captured = False
-        # 座標系を設定
+
+        self.scale = 2.0
         self.set_coordinate_system()
+
+        self.plot_gui = False
+        self.plt_x, self.plt_y, self.plt_z = (
+            [0.0] * self.NUM_HAND_LANDMARKS * 2,
+            [0.0] * self.NUM_HAND_LANDMARKS * 2,
+            [0.0] * self.NUM_HAND_LANDMARKS * 2,
+        )
+        if self.plot_gui:
+            self.fig = plt.figure()
+            self.ax = self.fig.add_subplot(111, projection="3d")
+            self.ax.set_xlim(-0.5, 0.5)
+            self.ax.set_ylim(-0.5, 0.5)
+            self.ax.set_zlim(-0.5, 0.5)
+            (self.plt_point,) = self.ax.plot(
+                [self.plt_x], [self.plt_y], [self.plt_z], "ro"
+            )
 
     def set_coordinate_system(self):
         if self._coord_captured:
@@ -207,8 +211,9 @@ class Hand3DTracker:
             or len(results.multi_hand_landmarks) != len(results2.multi_hand_landmarks)
         ):
             print("....")
-            plt.draw()
-            plt.pause(0.001)
+            if self.plot_gui:
+                plt.draw()
+                plt.pause(0.001)
             return True
 
         num_detected = min(
@@ -266,24 +271,30 @@ class Hand3DTracker:
 
             rotation_ = R.from_quat(rotation).as_matrix()
             rotation_ = self.trans_[:3, :3] @ rotation_  # 回転行列を変換
-            rotation = R.from_matrix(rotation_).as_quat()
+            try:
+                rotation = R.from_matrix(rotation_).as_quat()
+            except Exception:
+                rotation = np.array([0, 0, 0, 1])
+            rotation = np.array([0, 0, 0, 1])
 
             if i == 0:
-                self._l_hand_3d_ = HandTrans(wrist, rotation)
+                self._l_hand_3d_ = HandTrans(wrist * self.scale, rotation)
             else:
-                self._r_hand_3d_ = HandTrans(wrist, rotation)
+                self._r_hand_3d_ = HandTrans(wrist * self.scale, rotation)
 
             print(f"Hand {i}: Pos {wrist}, Rot {rotation} (quat x,y,z,w)")
-        self.plt_point.set_data(
-            [self._l_hand_3d_.pos[0], self._r_hand_3d_.pos[0]],
-            [self._l_hand_3d_.pos[1], self._r_hand_3d_.pos[1]],
-        )
-        self.plt_point.set_3d_properties(  # type: ignore
-            [self._l_hand_3d_.pos[2], self._r_hand_3d_.pos[2]]
-        )
 
-        plt.draw()
-        plt.pause(0.001)
+        if self.plot_gui:
+            plt.draw()
+            plt.pause(0.001)
+            self.plt_point.set_data(
+                [self._l_hand_3d_.pos[0], self._r_hand_3d_.pos[0]],
+                [self._l_hand_3d_.pos[1], self._r_hand_3d_.pos[1]],
+            )
+            self.plt_point.set_3d_properties(  # type: ignore
+                [self._l_hand_3d_.pos[2], self._r_hand_3d_.pos[2]]
+            )
+
         self._render(results, results2)
 
         return True

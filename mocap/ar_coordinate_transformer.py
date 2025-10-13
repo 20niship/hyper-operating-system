@@ -60,7 +60,7 @@ def calib_marker_coordinates(
     center = calib.triangulate(uv_1.center, uv_2.center)
     x_axis = calib.triangulate(uv_1.x_axis, uv_2.x_axis)
     y_axis = calib.triangulate(uv_1.y_axis, uv_2.y_axis)
-    z_axis = np.cross(x_axis - center, y_axis - center)
+    z_axis = -np.cross(x_axis - center, y_axis - center)
 
     # x, y,z軸から変換行列を計算
     trans_mat = np.eye(4)

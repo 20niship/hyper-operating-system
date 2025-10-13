@@ -19,12 +19,11 @@ def main():
 
         t_l = tracker._l_hand_3d_
         t_r = tracker._r_hand_3d_
+        j_l = ik_l.compute_ik(t_l.pos, [0, 0, 0, 1])
+        # j_r = ik_r.compute_ik(t_r.pos, t_r.rot)
+        action[0:6] = j_l
 
-        if t_l is not None and t_r is not None:
-            j_l = ik_l.compute_ik(t_l.pos, [0, 0, 0, 1])
-            # j_r = ik_r.compute_ik(t_r.pos, t_r.rot)
-            action[0:6] = j_l
-            # action[6:12] = j_r
+        # action[6:12] = j_r
         # obs, reward, done, info = env.step(action)
         # env.render()
 

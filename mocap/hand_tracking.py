@@ -163,9 +163,9 @@ class Hand3DTracker:
         results2 = hands_r.process(rgb_f2)
         self._render(results, results2)
 
-        found_l = results.multi_hand_landmarks and len(results.multi_hand_landmarks) > 1
+        found_l = results.multi_hand_landmarks and len(results.multi_hand_landmarks) > 0
         found_r = (
-            results2.multi_hand_landmarks and len(results2.multi_hand_landmarks) > 1
+            results2.multi_hand_landmarks and len(results2.multi_hand_landmarks) > 0
         )
         if not found_l or not found_r:
             print("....")
@@ -173,73 +173,77 @@ class Hand3DTracker:
             plt.pause(0.001)
             return True
 
-        if self.render_3d_hands:
-            for i in range(2):
-                hand1 = results.multi_hand_landmarks[i]
-                hand2 = results2.multi_hand_landmarks[i]
-                pts1 = np.array(
-                    [
-                        [lm.x * self.frame1.shape[1], lm.y * self.frame1.shape[0]]
-                        for lm in hand1.landmark
-                    ],
-                    dtype=np.float32,
-                )
-                pts2 = np.array(
-                    [
-                        [lm.x * self.frame2.shape[1], lm.y * self.frame2.shape[0]]
-                        for lm in hand2.landmark
-                    ],
-                    dtype=np.float32,
-                )
-                points_3d = [self.tri.triangulate(p1, p2) for p1, p2 in zip(pts1, pts2)]
-                for k, point in enumerate(points_3d):
-                    self.plt_x[k + i * self.NUM_HAND_LANDMARKS] = point[0]
-                    self.plt_y[k + i * self.NUM_HAND_LANDMARKS] = point[1]
-                    self.plt_z[k + i * self.NUM_HAND_LANDMARKS] = point[2]
-                self.plt_point.set_data(self.plt_x, self.plt_y)
-                self.plt_point.set_3d_properties(self.plt_z)  # type: ignore
-        else:
-            for i in range(2):
-                hand1 = results.multi_hand_landmarks[i]
-                hand2 = results2.multi_hand_landmarks[i]
-                pts1 = np.array(
-                    [
-                        [lm.x * self.frame1.shape[1], lm.y * self.frame1.shape[0]]
-                        for lm in hand1.landmark
-                    ],
-                    dtype=np.float32,
-                )
-                pts2 = np.array(
-                    [
-                        [lm.x * self.frame2.shape[1], lm.y * self.frame2.shape[0]]
-                        for lm in hand2.landmark
-                    ],
-                    dtype=np.float32,
-                )
-                points_3d = [self.tri.triangulate(p1, p2) for p1, p2 in zip(pts1, pts2)]
-                for k, point in enumerate(points_3d):
-                    self.plt_x[k + i * self.NUM_HAND_LANDMARKS] = point[0]
-                    self.plt_y[k + i * self.NUM_HAND_LANDMARKS] = point[1]
-                    self.plt_z[k + i * self.NUM_HAND_LANDMARKS] = point[2]
+        # if self.render_3d_hands:
+        #     for i in range(2):
+        #         hand1 = results.multi_hand_landmarks[i]
+        #         hand2 = results2.multi_hand_landmarks[i]
+        #         pts1 = np.array(
+        #             [
+        #                 [lm.x * self.frame1.shape[1], lm.y * self.frame1.shape[0]]
+        #                 for lm in hand1.landmark
+        #             ],
+        #             dtype=np.float32,
+        #         )
+        #         pts2 = np.array(
+        #             [
+        #                 [lm.x * self.frame2.shape[1], lm.y * self.frame2.shape[0]]
+        #                 for lm in hand2.landmark
+        #             ],
+        #             dtype=np.float32,
+        #         )
+        #         points_3d = [self.tri.triangulate(p1, p2) for p1, p2 in zip(pts1, pts2)]
+        #         for k, point in enumerate(points_3d):
+        #             self.plt_x[k + i * self.NUM_HAND_LANDMARKS] = point[0]
+        #             self.plt_y[k + i * self.NUM_HAND_LANDMARKS] = point[1]
+        #             self.plt_z[k + i * self.NUM_HAND_LANDMARKS] = point[2]
+        #         self.plt_point.set_data(self.plt_x, self.plt_y)
+        #         self.plt_point.set_3d_properties(self.plt_z)  # type: ignore
+        # else:
 
-                wrist, rotation = _landmarks_to_pos_rot(
-                    self.plt_x,
-                    self.plt_y,
-                    self.plt_z,
-                    offset_idx=i * self.NUM_HAND_LANDMARKS,
-                )
-                print(f"Hand {i} Wrist Position: {wrist}, Rotation (quat): {rotation}")
-                if i == 0:
-                    self._l_hand_3d_ = HandTrans(wrist, rotation)
-                else:
-                    self._r_hand_3d_ = HandTrans(wrist, rotation)
-                self.plt_point.set_data(
-                    [self._l_hand_3d_.pos[0], self._r_hand_3d_.pos[0]],
-                    [self._l_hand_3d_.pos[1], self._r_hand_3d_.pos[1]],
-                )
-                self.plt_point.set_3d_properties(  # type: ignore
-                    [self._l_hand_3d_.pos[2], self._r_hand_3d_.pos[2]]
-                )
+        num_detected = min(
+            len(results.multi_hand_landmarks), len(results2.multi_hand_landmarks)
+        )
+        for i in range(num_detected):
+            hand1 = results.multi_hand_landmarks[i]
+            hand2 = results2.multi_hand_landmarks[i]
+            pts1 = np.array(
+                [
+                    [lm.x * self.frame1.shape[1], lm.y * self.frame1.shape[0]]
+                    for lm in hand1.landmark
+                ],
+                dtype=np.float32,
+            )
+            pts2 = np.array(
+                [
+                    [lm.x * self.frame2.shape[1], lm.y * self.frame2.shape[0]]
+                    for lm in hand2.landmark
+                ],
+                dtype=np.float32,
+            )
+            points_3d = [self.tri.triangulate(p1, p2) for p1, p2 in zip(pts1, pts2)]
+            for k, point in enumerate(points_3d):
+                self.plt_x[k + i * self.NUM_HAND_LANDMARKS] = point[0]
+                self.plt_y[k + i * self.NUM_HAND_LANDMARKS] = point[1]
+                self.plt_z[k + i * self.NUM_HAND_LANDMARKS] = point[2]
+
+            wrist, rotation = _landmarks_to_pos_rot(
+                self.plt_x,
+                self.plt_y,
+                self.plt_z,
+                offset_idx=i * self.NUM_HAND_LANDMARKS,
+            )
+            print(f"Hand {i} Wrist Position: {wrist}, Rotation (quat): {rotation}")
+            if i == 0:
+                self._l_hand_3d_ = HandTrans(wrist, rotation)
+            else:
+                self._r_hand_3d_ = HandTrans(wrist, rotation)
+            self.plt_point.set_data(
+                [self._l_hand_3d_.pos[0], self._r_hand_3d_.pos[0]],
+                [self._l_hand_3d_.pos[1], self._r_hand_3d_.pos[1]],
+            )
+            self.plt_point.set_3d_properties(  # type: ignore
+                [self._l_hand_3d_.pos[2], self._r_hand_3d_.pos[2]]
+            )
 
         plt.draw()
         plt.pause(0.001)

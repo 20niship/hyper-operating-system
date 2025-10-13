@@ -13,7 +13,7 @@ class _ARMarkerUV:
     y_axis: list[float]
 
 
-def _get_coord_uv_pos(frame: np.ndarray, target_id: int) -> Optional[_ARMarkerUV]:
+def get_coord_uv_pos(frame: np.ndarray, target_id: int) -> Optional[_ARMarkerUV]:
     aruco_dict_type = cv2.aruco.DICT_4X4_50
     aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_type)
     aruco_params = cv2.aruco.DetectorParameters()
@@ -22,13 +22,15 @@ def _get_coord_uv_pos(frame: np.ndarray, target_id: int) -> Optional[_ARMarkerUV
     corners, ids, _ = detector.detectMarkers(gray)
     if ids is None or len(ids) == 0:
         return None
-
-    idx_ = filter(lambda x: x == target_id, ids.flatten())
-    if idx_ is None:
+    # 指定したIDのマーカーを探す
+    idx_ = -1
+    for i, id_ in enumerate(ids):
+        if id_ == target_id:
+            idx_ = i
+            break
+    if idx_ == -1:
         return None
-    idx = list(idx_)[0]
-    corner = corners[idx][0]
-    # x, Y座標を取得
+    corner = corners[idx_][0]
     center = np.mean(corner, axis=0)
     x_, y_ = int(center[0]), int(center[1])
     return _ARMarkerUV(
@@ -49,10 +51,11 @@ def calib_marker_coordinates(
     frame2: np.ndarray,
     calib: StereoCalibrator,
     marker_id: int = 0,
-) -> np.ndarray:
-    uv_1 = _get_coord_uv_pos(frame1, marker_id)
-    uv_2 = _get_coord_uv_pos(frame2, marker_id)
-    assert uv_1 is not None and uv_2 is not None
+) -> np.ndarray | None:
+    uv_1 = get_coord_uv_pos(frame1, marker_id)
+    uv_2 = get_coord_uv_pos(frame2, marker_id)
+    if uv_1 is None or uv_2 is None:
+        return None
 
     center = calib.triangulate(uv_1.center, uv_2.center)
     x_axis = calib.triangulate(uv_1.x_axis, uv_2.x_axis)
@@ -60,12 +63,9 @@ def calib_marker_coordinates(
     z_axis = np.cross(x_axis - center, y_axis - center)
 
     # x, y,z軸から変換行列を計算
-    rot_matrix = np.column_stack(
-        (
-            (x_axis - center) / np.linalg.norm(x_axis - center),
-            (y_axis - center) / np.linalg.norm(y_axis - center),
-            z_axis / np.linalg.norm(z_axis),
-        )
-    )
-    rot = R.from_matrix(rot_matrix)
-    return np.column_stack((rot.as_quat(), center))
+    trans_mat = np.eye(4)
+    trans_mat[0:3, 0] = (x_axis - center) / np.linalg.norm(x_axis - center)
+    trans_mat[0:3, 1] = (y_axis - center) / np.linalg.norm(y_axis - center)
+    trans_mat[0:3, 2] = z_axis / np.linalg.norm(z_axis)
+    trans_mat[0:3, 3] = center
+    return trans_mat

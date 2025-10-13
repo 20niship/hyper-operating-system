@@ -8,7 +8,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-from stereo_tri import StereoCalibrator
+from mocap.stereo_tri import StereoCalibrator
 
 mp_hands = mp.solutions.hands  # type: ignore
 mp_drawing = mp.solutions.drawing_utils  # type: ignore
@@ -30,7 +30,7 @@ hands_r = mp_hands.Hands(
 
 def _landmarks_to_pos_rot(
     ld_x: list[float], ld_y: list[float], ld_z: list[float], offset_idx=0
-):
+) -> tuple[np.ndarray, np.ndarray]:
     wrist = np.array([ld_x[offset_idx], ld_y[offset_idx], ld_z[offset_idx]])
     index_base = np.array(
         [ld_x[5 + offset_idx], ld_y[5 + offset_idx], ld_z[5 + offset_idx]]
@@ -67,8 +67,8 @@ def _landmarks_to_pos_rot(
 
 @dataclass
 class HandTrans:
-    pos: np.ndarray
-    rot: np.ndarray
+    pos: np.ndarray | list[float]
+    rot: np.ndarray | list[float]
 
 
 class Hand3DTracker:
@@ -193,7 +193,6 @@ class Hand3DTracker:
                 )
                 points_3d = [self.tri.triangulate(p1, p2) for p1, p2 in zip(pts1, pts2)]
                 for k, point in enumerate(points_3d):
-                    print(f"Landmark {k} {i}: {point}")  # 3D座標を表示
                     self.plt_x[k + i * self.NUM_HAND_LANDMARKS] = point[0]
                     self.plt_y[k + i * self.NUM_HAND_LANDMARKS] = point[1]
                     self.plt_z[k + i * self.NUM_HAND_LANDMARKS] = point[2]
@@ -219,7 +218,6 @@ class Hand3DTracker:
                 )
                 points_3d = [self.tri.triangulate(p1, p2) for p1, p2 in zip(pts1, pts2)]
                 for k, point in enumerate(points_3d):
-                    print(f"Landmark {k} {i}: {point}")  # 3D座標を表示
                     self.plt_x[k + i * self.NUM_HAND_LANDMARKS] = point[0]
                     self.plt_y[k + i * self.NUM_HAND_LANDMARKS] = point[1]
                     self.plt_z[k + i * self.NUM_HAND_LANDMARKS] = point[2]

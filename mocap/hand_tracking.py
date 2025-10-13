@@ -1,4 +1,9 @@
 import matplotlib
+import sys
+from pathlib import Path
+
+path_ = Path(__file__).parent.parent
+sys.path.append(str(path_))
 
 matplotlib.use("TkAgg")  # Macの場合は "MacOSX" に変更してください
 
@@ -143,7 +148,6 @@ class Hand3DTracker:
 
     def _render(self, results, results2):
         assert self.frame1 is not None and self.frame2 is not None
-        print(results.multi_hand_landmarks, results2.multi_hand_landmarks)
 
         if results.multi_hand_landmarks:
             for landmarks in results.multi_hand_landmarks:
@@ -266,7 +270,7 @@ class Hand3DTracker:
             rotation_ = self.trans_[:3, :3] @ rotation_  # 回転行列を変換
             rotation = R.from_matrix(rotation_).as_quat()
             print(f"Hand {i} Wrist Position: {wrist}, Rotation (quat): {rotation}")
-            
+
             if i == 0:
                 self._l_hand_3d_ = HandTrans(wrist, rotation)
             else:

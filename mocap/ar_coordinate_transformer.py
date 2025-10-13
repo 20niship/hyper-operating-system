@@ -3,7 +3,7 @@ import numpy as np
 from typing import Optional, Tuple, List
 from scipy.spatial.transform import Rotation as R
 from dataclasses import dataclass
-from stereo_calib import StereoCalibrator
+from mocap.stereo_tri import StereoCalibrator
 
 
 @dataclass
@@ -29,7 +29,6 @@ def _get_coord_uv_pos(frame: np.ndarray, target_id: int) -> Optional[_ARMarkerUV
     idx = list(idx_)[0]
     corner = corners[idx][0]
     # x, Y座標を取得
-    print(corner)
     center = np.mean(corner, axis=0)
     x_, y_ = int(center[0]), int(center[1])
     return _ARMarkerUV(
@@ -70,5 +69,3 @@ def calib_marker_coordinates(
     )
     rot = R.from_matrix(rot_matrix)
     return np.column_stack((rot.as_quat(), center))
-
-

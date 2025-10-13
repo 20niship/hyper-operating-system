@@ -36,9 +36,6 @@ def capture_images(video0=0, video1=1):
             print("カメラからの映像取得に失敗しました。")
             continue
 
-        grayL = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
-        grayR = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
-
         if key == ord("c"):
             img_count += 1
             cv2.imwrite(f"images/left{img_count:02d}.jpg", frame1)

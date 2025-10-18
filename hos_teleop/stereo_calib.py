@@ -10,7 +10,10 @@ import cv2
 import numpy as np
 from mocap.stereo_tri import StereoCalibrator, capture_images
 
-capture_images(0, 2)
+CAP_IDX1 = 0
+CAP_IDX2 = 1
+
+capture_images(CAP_IDX1, CAP_IDX2)
 
 calib = StereoCalibrator((8, 5), 0.025)
 if not Path("stereo_calib.json").exists():
@@ -26,8 +29,8 @@ ARUCO_PARAMS = cv2.aruco.DetectorParameters()
 TARGET_ID = 0  # トラッキングしたいマーカーID（必要に応じて変更）
 
 print("start opening cameras...")
-capL = cv2.VideoCapture(0)
-capR = cv2.VideoCapture(2)
+capL = cv2.VideoCapture(CAP_IDX1)
+capR = cv2.VideoCapture(CAP_IDX2)
 
 print("capL.isOpened()", capL.isOpened())
 print("capR.isOpened()", capR.isOpened())

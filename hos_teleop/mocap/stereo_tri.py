@@ -190,7 +190,9 @@ class StereoCalibrator:
     def get_projection_matrices(self):
         return self.P1, self.P2
 
-    def triangulate(self, point1: list[float], point2: list[float]) -> np.ndarray:
+    def triangulate(
+        self, point1: list[float | int], point2: list[float | int]
+    ) -> np.ndarray:
         # 三角測量
         if self.P1 is None or self.P2 is None:
             raise ValueError("Projection matrices are not available.")
@@ -225,7 +227,7 @@ if __name__ == "__main__":
     P1, P2 = calibrator2.get_projection_matrices()
 
     # 三角測量例
-    point1 = (150, 120)  # 左画像の対応点
-    point2 = (130, 115)  # 右画像の対応点
-    point_3d = calibrator2.DLT(P1, P2, point1, point2)
+    point1 = [150.0, 120.0]  # 左画像の対応点
+    point2 = [130.0, 115.0]  # 右画像の対応点
+    point_3d = calibrator2.triangulate(point1, point2)
     print("3D Point:", point_3d)

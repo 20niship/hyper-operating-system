@@ -4,16 +4,63 @@
 
 また、テレオペで模倣学習のデータセットを用意したり、シミュレーション上で複数のロボットを動かしてデータセットを作成することに特化しています
 
-## hos core
+## Topicによるノード同士の通信システム
 
-ROSのようなコマンドを使用可能です
+パブリッシャーの再起動に対応した堅牢なmany-to-many pub/subシステムです。
+
+## 主な特徴
+
+- **独立したブローカーサービス**: パブリッシャーとサブスクライバーから独立して動作
+- **自動再接続**: パブリッシャーやブローカーが再起動しても自動的に再接続
+- **Many-to-Many通信**: 複数のパブリッシャーと複数のサブスクライバーが同時に動作可能
+- **ZeroMQ XPUB/XSUB**: 高性能なメッセージプロキシパターンを使用
+
+## システム構成
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Publisher 1   │    │                 │    │  Subscriber 1   │
+│                 │───▶│  Message Broker │◀───│                 │
+└─────────────────┘    │   (XPUB/XSUB)   │    └─────────────────┘
+                       │                 │    
+┌─────────────────┐    │   Frontend:5556 │    ┌─────────────────┐
+│   Publisher 2   │───▶│   Backend :5557 │◀───│  Subscriber 2   │
+└─────────────────┘    │   Registry:5555 │    └─────────────────┘
+```
+
+トピックを使用するには、brokerを起動する必要があります
+```bash
+# 方法1: スクリプトから起動
+python start_broker.py
+
+# 方法2: モジュールとして起動  
+python -m hos_core
+```
+
+ブローカーが正常に起動すると以下のような出力が表示されます：
+
+```py
+Message Broker initialized:
+  Publisher port (XSUB): 5556
+  Subscriber port (XPUB): 5557
+  Registry port (REP): 5555
+
+=== HOS Message Broker Running ===
+Press Ctrl+C to stop
+Publishers connect to: tcp://localhost:5556
+Subscribers connect to: tcp://localhost:5557
+Registry available at: tcp://localhost:5555
+==========================================
+```
+
+そのあとは、ros(ros2ではない)のROSのようなコマンドを使用可能です
 
 ```bash
 uv run hos_topic.py echo /chatter
 uv run hos_topic.py list 
 uv run hos_topic.py info /chatter
 
-
+# rosbagのようにトピックの中を保存する
 uv run hos_bag.py record /chatter
 uv run hos_bag.py play sample.bag
 ```
@@ -112,6 +159,69 @@ if __name__ == "__main__":
     main()
 ```
 
+### 2. サブスクライバーを起動
+
+別のターミナルでサブスクライバーを起動：
+
+```bash
+python sub_node.py
+```
+
+### 3. パブリッシャーを起動
+
+さらに別のターミナルでパブリッシャーを起動：
+
+```bash
+python pub_node.py
+```
+### パブリッシャーの作成
+
+```python
+from hos_core.topic import Publisher
+
+# パブリッシャーを作成（自動的にブローカーに接続）
+publisher = Publisher("/my_topic", "std_msgs/String")
+
+# メッセージをパブリッシュ（自動再接続付き）
+message = {"data": "Hello, World!", "timestamp": time.time()}
+success = publisher.publish(message)
+
+# 終了
+publisher.close()
+```
+
+### サブスクライバーの作成
+
+```python
+from hos_core.topic import Subscriber
+
+def message_callback(message):
+    print(f"Received: {message}")
+
+# サブスクライバーを作成（自動的にブローカーに接続）
+subscriber = Subscriber("/my_topic", message_callback, "std_msgs/String")
+
+# 受信開始（バックグラウンドスレッドで動作）
+subscriber.start()
+
+# メインループ
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    pass
+
+# 終了
+subscriber.close()
+```
+
+## ポート使用
+
+- **5555**: レジストリ・管理用
+- **5556**: パブリッシャー接続用（XSUB）
+- **5557**: サブスクライバー接続用（XPUB）
+
+これらのポートが他のプロセスで使用されていないことを確認してください。
 
 
 

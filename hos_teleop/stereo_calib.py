@@ -125,5 +125,5 @@ def stereo_calib():
     cv2.destroyAllWindows()
 
 
-# calib()
-stereo_calib()
+calib()
+# stereo_calib()

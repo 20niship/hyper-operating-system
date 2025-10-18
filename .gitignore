@@ -185,3 +185,6 @@ stereo_calib.xml
 
 .DS_Store
 stereo_calib.json
+
+images/
+images2/

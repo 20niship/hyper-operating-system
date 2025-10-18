@@ -1,6 +1,6 @@
-from mocap.hand_tracking import Hand3DTracker
-from mocap.so101_env import SO101MultiEnv
-from mocap.ik import URDFInverseKinematics
+from hos_teleop.mocap.hand_tracking import Hand3DTracker
+from hos_envs.multi_so101.so101_env import SO101MultiEnv
+from hos_teleop.mocap.ik import URDFInverseKinematics
 
 
 def main():

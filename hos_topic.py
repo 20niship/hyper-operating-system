@@ -12,7 +12,6 @@ ROSのrostopicコマンドに相当する機能を提供
 import argparse
 import sys
 import time
-import threading
 from pathlib import Path
 
 # プロジェクトルートをPythonパスに追加
@@ -139,13 +138,13 @@ def cmd_pub(args):
     
     registry_manager = start_registry_if_needed()
     
+    publisher = None
     try:
         publisher = Publisher(topic_name)
         
         print(f"Publishing to '{topic_name}' at {rate} Hz...")
         
         message_count = 0
-        start_time = time.time()
         
         while True:
             if count is not None and message_count >= count:
@@ -186,7 +185,7 @@ def cmd_pub(args):
     except Exception as e:
         print(f"Error publishing: {e}")
     finally:
-        if 'publisher' in locals():
+        if publisher:
             publisher.close()
         if registry_manager:
             registry_manager.stop()

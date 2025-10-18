@@ -6,7 +6,7 @@ import glob
 from pathlib import Path
 import argparse
 import cv2
-from mocap.stereo_tri import StereoCalibrator, capture_images
+from .mocap.stereo_tri import StereoCalibrator, capture_images
 from hos_teleop.mocap.hand_tracking import Hand3DTracker
 from hos_core.topic import Publisher
 

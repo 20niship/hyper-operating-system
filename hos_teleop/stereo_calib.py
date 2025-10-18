@@ -18,8 +18,8 @@ ARUCO_PARAMS = cv2.aruco.DetectorParameters()
 TARGET_ID = 0  # トラッキングしたいマーカーID（必要に応じて変更）
 
 
-def calib():
-    capture_images(CAP_IDX1, CAP_IDX2)
+def calib(cap_idx1=CAP_IDX1, cap_idx2=CAP_IDX2):
+    capture_images(cap_idx1, cap_idx2)
 
     calib = StereoCalibrator((8, 5), 0.025)
     if not Path("stereo_calib.json").exists():
@@ -27,22 +27,8 @@ def calib():
         imags_2 = sorted(glob.glob("images/right*.jpg"))
         calib.calibrate(imags_1, imags_2)
         calib.save("stereo_calib.json")
-
     calib.load("stereo_calib.json")
-
-    capL = cv2.VideoCapture(CAP_IDX1)
-    capR = cv2.VideoCapture(CAP_IDX2)
-
-    print("capL.isOpened()", capL.isOpened())
-    print("capR.isOpened()", capR.isOpened())
-
-    #     capL.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))  # type: ignore
-    #     capR.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))  # type: ignore
-
-    if not capL.isOpened() or not capR.isOpened():
-        raise RuntimeError("カメラが開けませ。デバイス番号を確認してください。")
-
-    print("start capturing...")
+    print("DONE")
 
 
 def detect_aruco_marker(frame, target_id):

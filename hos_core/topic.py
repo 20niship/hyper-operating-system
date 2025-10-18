@@ -8,8 +8,45 @@ import zmq
 import json
 import threading
 import time
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from dataclasses import dataclass, asdict
+
+
+def _type_to_string(message_type: Any) -> str:
+    """
+    Pythonのタイプを文字列表現に変換
+    """
+    if isinstance(message_type, str):
+        return message_type
+    
+    if hasattr(message_type, '__name__'):
+        # 基本的なタイプ（str, int, float, etc.）
+        if message_type.__name__ in ['str', 'int', 'float', 'bool', 'bytes']:
+            return f"std_msgs/{message_type.__name__.capitalize()}"
+        elif message_type.__name__ == 'ndarray':
+            return "std_msgs/Float32MultiArray"
+        elif message_type.__name__ == 'list':
+            return "std_msgs/Array"
+        else:
+            return f"custom/{message_type.__name__}"
+    
+    # typing.Union などの複合タイプの場合
+    if hasattr(message_type, '__origin__'):
+        origin = message_type.__origin__
+        if origin is Union:
+            # Union[str, int] -> "std_msgs/Union[String,Int32]"
+            args = message_type.__args__
+            type_names = [_type_to_string(arg) for arg in args]
+            return f"std_msgs/Union[{','.join(type_names)}]"
+        elif origin is list:
+            # List[float] -> "std_msgs/Float32Array"
+            if message_type.__args__:
+                inner_type = _type_to_string(message_type.__args__[0])
+                return f"{inner_type}Array"
+            return "std_msgs/Array"
+    
+    # フォールバック
+    return str(message_type)
 
 
 @dataclass
@@ -43,7 +80,9 @@ class BrokerClient:
         try:
             socket.send_json(request)
             response = socket.recv_json()
-            return response
+            if isinstance(response, dict):
+                return response
+            return None
         except zmq.Again:
             print(f"Timeout connecting to broker at {self.registry_host}:{self.registry_port}")
             return None
@@ -86,7 +125,7 @@ class TopicClient(BrokerClient):
             timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
             print(f"[{timestamp}] {topic_name}: {message}")
             
-        subscriber = Subscriber(topic_name, callback)
+        subscriber = Subscriber(topic_name, callback, str)
         try:
             subscriber.start()
             
@@ -112,11 +151,11 @@ class Publisher:
     自動再接続機能付き
     """
     
-    def __init__(self, topic: str, message_type: str = "std_msgs/String", 
+    def __init__(self, topic: str, message_type: Any = str, 
                  registry_host: str = "localhost", registry_port: int = 5555):
         self.context = zmq.Context()
         self.topic = topic
-        self.message_type = message_type
+        self.message_type = _type_to_string(message_type)
         self.registry_host = registry_host
         self.registry_port = registry_port
         
@@ -234,12 +273,12 @@ class Subscriber:
     パブリッシャーが再起動しても継続受信可能
     """
     
-    def __init__(self, topic: str, callback, message_type: str = "std_msgs/String",
+    def __init__(self, topic: str, callback, message_type: Any = str,
                  registry_host: str = "localhost", registry_port: int = 5555):
         self.context = zmq.Context()
         self.topic = topic
         self.callback = callback
-        self.message_type = message_type
+        self.message_type = _type_to_string(message_type)
         self.registry_host = registry_host
         self.registry_port = registry_port
         

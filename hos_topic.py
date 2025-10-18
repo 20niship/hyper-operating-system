@@ -140,7 +140,7 @@ def cmd_pub(args):
     
     publisher = None
     try:
-        publisher = Publisher(topic_name)
+        publisher = Publisher(topic_name, str)
         
         print(f"Publishing to '{topic_name}' at {rate} Hz...")
         

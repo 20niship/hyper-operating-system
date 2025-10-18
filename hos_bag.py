@@ -17,7 +17,7 @@ import time
 import json
 import gzip
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional
 from datetime import datetime
 import threading
 
@@ -63,7 +63,7 @@ class BagMessage:
 class BagRecorder:
     """バッグファイル記録クラス"""
     
-    def __init__(self, topics: List[str], output_file: str = None):
+    def __init__(self, topics: List[str], output_file: Optional[str] = None):
         self.topics = topics
         self.output_file = output_file or f"hos_bag_{datetime.now().strftime('%Y%m%d_%H%M%S')}.bag"
         self.messages: List[BagMessage] = []
@@ -205,7 +205,7 @@ class BagPlayer:
         info['topic_counts'] = topic_counts
         return info
         
-    def play(self, rate: float = 1.0, loop: bool = False, start_time: float = None, duration: float = None):
+    def play(self, rate: float = 1.0, loop: bool = False, start_time: Optional[float] = None, duration: Optional[float] = None):
         """バッグファイルを再生"""
         if not self.bag_data:
             print("Bag file not loaded!")
@@ -401,7 +401,10 @@ def cmd_topics(args):
     
     # メッセージからトピック情報を抽出
     topic_info = {}
-    messages = player.bag_data.get('messages', [])
+    if player.bag_data:
+        messages = player.bag_data.get('messages', [])
+    else:
+        messages = []
     for msg_data in messages:
         topic = msg_data.get('topic')
         if topic:

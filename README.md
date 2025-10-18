@@ -180,7 +180,7 @@ python pub_node.py
 from hos_core.topic import Publisher
 
 # パブリッシャーを作成（自動的にブローカーに接続）
-publisher = Publisher("/my_topic", "std_msgs/String")
+publisher = Publisher("/my_topic", str)
 
 # メッセージをパブリッシュ（自動再接続付き）
 message = {"data": "Hello, World!", "timestamp": time.time()}
@@ -199,7 +199,7 @@ def message_callback(message):
     print(f"Received: {message}")
 
 # サブスクライバーを作成（自動的にブローカーに接続）
-subscriber = Subscriber("/my_topic", message_callback, "std_msgs/String")
+subscriber = Subscriber("/my_topic", message_callback, str)
 
 # 受信開始（バックグラウンドスレッドで動作）
 subscriber.start()

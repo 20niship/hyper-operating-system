@@ -24,7 +24,7 @@ def main():
     print("=============================\n")
     
     # パブリッシャーを作成（ブローカーに自動接続）
-    publisher = Publisher("/chatter", "std_msgs/String")
+    publisher = Publisher("/chatter", str)
     
     print("Publishing to /chatter topic... (Press Ctrl+C to stop)")
     print("Publisher will automatically reconnect if broker restarts.\n")

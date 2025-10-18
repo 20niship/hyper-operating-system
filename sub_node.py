@@ -33,7 +33,7 @@ def main():
     print("Subscriber will automatically reconnect if broker restarts.\n")
     
     # サブスクライバーを作成（ブローカーに自動接続・自動再接続）
-    subscriber = Subscriber("/chatter", message_callback, "std_msgs/String")
+    subscriber = Subscriber("/chatter", message_callback, str)
     
     try:
         subscriber.start()

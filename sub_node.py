@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-sub_node.py - テスト用サブスクライバーノード
+sub_node.py - 新ブローカー対応サブスクライバーノード  
 /chatterトピックからメッセージを受信して表示
+パブリッシャーが再起動しても継続受信可能
 """
 
-import time
 import sys
+import time
 from pathlib import Path
 
 # プロジェクトルートをPythonパスに追加
@@ -22,17 +23,25 @@ def message_callback(message):
 
 
 def main():
-    print("Subscribing to /chatter topic... (Press Ctrl+C to stop)")
+    print("=== HOS Subscriber Node ===")
+    print("NOTE: Make sure the broker is running!")
+    print("Start broker with: python start_broker.py")
+    print("Or: python -m hos_core")
+    print("=============================\n")
     
-    # サブスクライバーを作成
+    print("Subscribing to /chatter topic... (Press Ctrl+C to stop)")
+    print("Subscriber will automatically reconnect if broker restarts.\n")
+    
+    # サブスクライバーを作成（ブローカーに自動接続・自動再接続）
     subscriber = Subscriber("/chatter", message_callback, "std_msgs/String")
     
     try:
         subscriber.start()
         
-        # メインループ
+        # メインループ - サブスクライバーは別スレッドで動作
+        print("Subscriber is running in background...")
         while True:
-            time.sleep(0.1)
+            time.sleep(1.0)
             
     except KeyboardInterrupt:
         print("\nStopping subscriber...")

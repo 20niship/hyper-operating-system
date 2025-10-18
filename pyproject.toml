@@ -10,6 +10,7 @@ dependencies = [
     "mujoco>=3.3.6",
     "numpy>=1.26.4",
     "opencv-python>=4.11.0.86",
+    "pyzmq>=27.1.0",
     # "pybullet>=3.2.7",
     # "pyopengl>=3.1.10",
     # "pyqt5==5.15.3", # ここのバージョンはpyqtgraphの互換性のために固定

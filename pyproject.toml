@@ -20,6 +20,7 @@ dependencies = [
     "tk>=0.1.0",
     "urdf2mjcf>=0.2.39",
     "vispy>=0.15.2",
+    "pyzmq>=26.2.0",
 ]
 
 [tool.pyright]

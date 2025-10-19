@@ -188,3 +188,6 @@ stereo_calib.json
 
 images/
 images2/
+
+*.zip
+*.dxf

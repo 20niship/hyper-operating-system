@@ -230,3 +230,8 @@ subscriber.close()
 
 ## 参考
 - https://temugeb.github.io/opencv/python/2021/02/02/stereo-camera-calibration-and-triangulation.html
+
+
+## LeRobot Coreとの連携
+
+- https://note.com/npaka/n/nc5a938a1a598 を参考に

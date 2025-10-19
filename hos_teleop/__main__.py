@@ -35,13 +35,27 @@ def _calib_stereo_cam_main(cap_idx1=CAP_IDX1, cap_idx2=CAP_IDX2):
     print("DONE")
 
 
-def _pub_hand_pos_main(cap_idx1=CAP_IDX1, cap_idx2=CAP_IDX2):
+def _pub_hand_pos_main(cap_idx1=CAP_IDX1, cap_idx2=CAP_IDX2, image_dir_=""):
     tracker = Hand3DTracker(cap_idx1, cap_idx2)
     pub_l = Publisher("/hand/left", list[float])
     pub_r = Publisher("/hand/right", list[float])
 
+    l_imgs = []
+    r_imgs = []
+    if image_dir_:
+        l_imgs = sorted(glob.glob(f"{image_dir_}/left*.jpg"))
+        r_imgs = sorted(glob.glob(f"{image_dir_}/right*.jpg"))
+
+    i = 0
+    nimages = min(len(l_imgs), len(r_imgs))
+
     while True:
-        tracker._capture()
+        if l_imgs and r_imgs:
+            tracker.frame1 = cv2.imread(l_imgs[i])
+            tracker.frame2 = cv2.imread(r_imgs[i])
+        else:
+            tracker._capture()
+
         if not tracker.update():
             break
         t_l = tracker._l_hand_3d_
@@ -68,16 +82,29 @@ def _pub_hand_pos_main(cap_idx1=CAP_IDX1, cap_idx2=CAP_IDX2):
                 t_r.rot[3],
             ]
             pub_r.publish(r_list)
+        i = (i + 1) % nimages if nimages > 0 else 0
     tracker.close()
 
 
-def _pub_ar_marker_pos_main():
-    from hos_teleop.mocap.hand_tracking import Hand3DTracker
+def _pub_ar_marker_pos_main(cap_idx1=CAP_IDX1, cap_idx2=CAP_IDX2, image_dir_=""):
+    tracker = Hand3DTracker(cap_idx1, cap_idx2)
 
-    tracker = Hand3DTracker(cam_l_idx=0, cam_r_idx=2)
+    l_imgs = []
+    r_imgs = []
+    if image_dir_:
+        l_imgs = sorted(glob.glob(f"{image_dir_}/left*.jpg"))
+        r_imgs = sorted(glob.glob(f"{image_dir_}/right*.jpg"))
+
+    i = 0
+    nimages = min(len(l_imgs), len(r_imgs))
 
     while True:
-        tracker._capture()
+        if l_imgs and r_imgs:
+            tracker.frame1 = cv2.imread(l_imgs[i])
+            tracker.frame2 = cv2.imread(r_imgs[i])
+            i = (i + 1) % nimages if nimages > 0 else 0
+        else:
+            tracker._capture()
         if not tracker.update():
             break
 
@@ -108,6 +135,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--cap2", type=int, default=CAP_IDX2, help="Camera index for right camera"
     )
+    parser.add_argument(
+        "--image_dir",
+        type=str,
+        default="",
+        help="Directory containing images for hand tracking",
+    )
     args = parser.parse_args()
 
     cap1 = args.cap1
@@ -116,6 +149,6 @@ if __name__ == "__main__":
     if args.calib_stereo_cam:
         _calib_stereo_cam_main(cap1, cap2)
     elif args.hand_tracking:
-        _pub_hand_pos_main()
+        _pub_hand_pos_main(cap1, cap2, args.image_dir)
     elif args.ar_marker_tracking:
-        _pub_ar_marker_pos_main()
+        _pub_ar_marker_pos_main(cap1, cap2, args.image_dir)

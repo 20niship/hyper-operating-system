@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = "===3.12.11"
 dependencies = [
     "ikpy>=3.4.2",
+    "lerobot>=0.3.3",
     "matplotlib>=3.10.7",
     "mediapipe==0.10.21",
     "mujoco>=3.3.6",

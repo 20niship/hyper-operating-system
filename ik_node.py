@@ -47,6 +47,7 @@ class IKNode:
         self.subscribe_topic = subscribe_topic
         self.publish_prefix = publish_prefix
         self.publish_suffix = publish_suffix
+        self.active_links_mask = active_links_mask
         
         # Load URDF and create kinematic chain
         print(f"Loading URDF from: {urdf_path}")
@@ -59,7 +60,7 @@ class IKNode:
             if len(self.chain.links) > 0:
                 self.chain.links[0].orientation = rot_matrix
         
-        # Set active links mask if provided
+        # Set active links mask if not provided
         # Automatically exclude fixed links for better performance
         if self.active_links_mask is None:
             self.active_links_mask = [link.joint_type in ["revolute", "prismatic"] for link in self.chain.links]
@@ -109,6 +110,11 @@ class IKNode:
             else:
                 data = message
             
+            # Handle string-encoded lists
+            if isinstance(data, str):
+                import ast
+                data = ast.literal_eval(data)
+            
             if not isinstance(data, (list, tuple)) or len(data) < 7:
                 print(f"Invalid pose message format: {message}")
                 return
@@ -145,19 +151,15 @@ class IKNode:
             rotation = R.from_quat(quat_xyzw)
             target_orientation = rotation.as_matrix()
             
-            # Build target frame (4x4 homogeneous transformation matrix)
-            target_frame = np.eye(4)
-            target_frame[:3, :3] = target_orientation
-            target_frame[:3, 3] = position
-            
             # Compute inverse kinematics
             # Use previous joint angles as initial guess for faster convergence (warm starting)
             initial_position = self.last_joint_angles
             
             joint_angles = self.chain.inverse_kinematics(
-                target_frame,
-                initial_position=initial_position,
-                orientation_mode="all"  # Match both position and orientation
+                target_position=position,
+                target_orientation=target_orientation,
+                orientation_mode="all",  # Match both position and orientation
+                initial_position=initial_position
             )
             
             # Store for next iteration (warm starting for better performance)

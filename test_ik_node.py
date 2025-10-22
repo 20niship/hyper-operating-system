@@ -26,7 +26,8 @@ def test_ik_node():
     print("====================\n")
     
     # Create publisher for end-effector pose
-    pose_publisher = Publisher("/hand/left", list)
+    # Use str type to send raw list data
+    pose_publisher = Publisher("/hand/left", str)
     
     # Create subscribers for joint angles
     joint_angles = {}
@@ -58,7 +59,8 @@ def test_ik_node():
         pose = position + quaternion.tolist()
         print(f"Publishing pose: position={position}, quaternion={quaternion}")
         
-        pose_publisher.publish(pose)
+        # Publish as string representation of list
+        pose_publisher.publish(str(pose))
         time.sleep(1.0)  # Wait for IK computation
         
         if joint_angles:
@@ -74,7 +76,8 @@ def test_ik_node():
         pose = position + quaternion.tolist()
         print(f"Publishing pose: position={position}, quaternion={quaternion}")
         
-        pose_publisher.publish(pose)
+        # Publish as string representation of list
+        pose_publisher.publish(str(pose))
         time.sleep(1.0)
         
         if joint_angles:
@@ -90,7 +93,8 @@ def test_ik_node():
             quaternion = R.from_euler('xyz', [0, 0, t]).as_quat()
             
             pose = position + quaternion.tolist()
-            pose_publisher.publish(pose)
+            # Publish as string representation of list
+            pose_publisher.publish(str(pose))
             time.sleep(0.1)
         
         print(f"Final joint angles: {joint_angles}")

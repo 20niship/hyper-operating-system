@@ -225,6 +225,63 @@ subscriber.close()
 
 
 
+## 逆運動学ノード（Inverse Kinematics Node）
+
+エンドエフェクターの位置と姿勢から関節角度を計算するノードが実装されています。
+
+### 基本的な使用方法
+
+```bash
+# ブローカーを起動（別ターミナル）
+python start_broker.py
+
+# IKノードを起動
+python ik_node.py --urdf hos_envs/multi_so101/SO101/so101_new_calib.urdf
+```
+
+デフォルトでは：
+- `/hand/left` トピックからエンドエフェクターの位置・姿勢を受信
+- `/joint1`, `/joint2`, `/joint3`, ... に関節角度を配信
+
+### カスタマイズオプション
+
+```bash
+# 入力トピック名を変更
+python ik_node.py --urdf robot.urdf --subscribe-topic /custom/pose
+
+# 出力トピックのプレフィックスとサフィックスを指定
+python ik_node.py --urdf robot.urdf --publish-prefix arm --publish-suffix _left
+# → /arm1_left, /arm2_left, ... に配信
+
+# ベースリンクの回転行列を指定（3x3行列を9要素で指定）
+python ik_node.py --urdf robot.urdf --base-orientation 1 0 0 0 0 1 0 -1 0
+```
+
+### 既存のハンドトラッキングとの連携
+
+```python
+from hos_teleop.mocap.hand_tracking import Hand3DTracker
+from hos_core.topic import Publisher
+
+tracker = Hand3DTracker(cap_idx1=0, cap_idx2=1)
+pose_pub = Publisher("/hand/left", str)
+
+while True:
+    tracker.update()
+    t_l = tracker._l_hand_3d_
+    if t_l:
+        # 位置とクォータニオンを結合して配信
+        pose = [
+            t_l.pos[0], t_l.pos[1], t_l.pos[2],
+            t_l.rot[0], t_l.rot[1], t_l.rot[2], t_l.rot[3]
+        ]
+        pose_pub.publish(str(pose))
+```
+
+この場合、IKノードが自動的に関節角度を計算して配信します。
+
+詳細は [IKノード使用方法ドキュメント](docs/ik_node_usage.md) を参照してください。
+
 ## ステレオカメラのキャリブレーション
 
 

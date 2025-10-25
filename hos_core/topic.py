@@ -229,15 +229,23 @@ class Publisher:
                     
             try:
                 # メッセージをバイナリにエンコード (msgpack使用)
-                if isinstance(message, str):
-                    # 文字列の場合はdictにラップ
-                    message_bytes = msgpack.packb({"data": message}, use_bin_type=True)
-                elif isinstance(message, (dict, list, int, float, bool, bytes)):
-                    # msgpackで直接シリアライズ可能な型
-                    message_bytes = msgpack.packb(message, use_bin_type=True)
-                else:
-                    # その他の型は文字列化してからdictにラップ
-                    message_bytes = msgpack.packb({"data": str(message)}, use_bin_type=True)
+                try:
+                    if isinstance(message, str):
+                        # 文字列の場合はdictにラップ
+                        message_bytes = msgpack.packb({"data": message}, use_bin_type=True)
+                    elif isinstance(message, (dict, list, int, float, bool, bytes)):
+                        # msgpackで直接シリアライズ可能な型
+                        message_bytes = msgpack.packb(message, use_bin_type=True)
+                    else:
+                        # その他の型は文字列化してからdictにラップ
+                        message_bytes = msgpack.packb({"data": str(message)}, use_bin_type=True)
+                except (msgpack.exceptions.PackException, TypeError) as e:
+                    # msgpackシリアライズエラー時はログ出力して失敗扱い
+                    print(f"Failed to serialize message with msgpack: {e}")
+                    self._connected = False
+                    if attempt < retry_count - 1:
+                        time.sleep(0.5)
+                    continue
                     
                 # パブリッシュ
                 with self._lock:
@@ -365,8 +373,7 @@ class Subscriber:
                                 # msgpackデコード
                                 data = msgpack.unpackb(message_bytes, raw=False)
                             except (msgpack.exceptions.ExtraData, 
-                                    msgpack.exceptions.UnpackException,
-                                    ValueError):
+                                    msgpack.exceptions.UnpackException):
                                 # msgpackデコード失敗時はJSONを試行（後方互換性）
                                 try:
                                     data = json.loads(message_bytes.decode())

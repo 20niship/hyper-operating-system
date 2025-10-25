@@ -6,6 +6,7 @@ HOSのトピック管理システム（改良版）
 
 import zmq
 import json
+import msgpack
 import threading
 import time
 from typing import Dict, Any, Optional, List, Union
@@ -227,20 +228,23 @@ class Publisher:
                     return False
                     
             try:
-                # メッセージフォーマット
-                if isinstance(message, dict):
-                    message_data = json.dumps(message)
-                elif isinstance(message, str):
-                    message_data = message
+                # メッセージをバイナリにエンコード (msgpack使用)
+                if isinstance(message, str):
+                    # 文字列の場合はdictにラップ
+                    message_bytes = msgpack.packb({"data": message}, use_bin_type=True)
+                elif isinstance(message, (dict, list, int, float, bool, bytes)):
+                    # msgpackで直接シリアライズ可能な型
+                    message_bytes = msgpack.packb(message, use_bin_type=True)
                 else:
-                    message_data = json.dumps({"data": str(message)})
+                    # その他の型は文字列化してからdictにラップ
+                    message_bytes = msgpack.packb({"data": str(message)}, use_bin_type=True)
                     
                 # パブリッシュ
                 with self._lock:
                     if self.socket:
                         self.socket.send_multipart([
                             self.topic.encode(),
-                            message_data.encode()
+                            message_bytes
                         ], zmq.NOBLOCK)
                 return True
                 
@@ -358,11 +362,17 @@ class Subscriber:
                             topic_bytes, message_bytes = self.socket.recv_multipart(zmq.NOBLOCK)
                             
                             try:
-                                # JSONデコード
-                                data = json.loads(message_bytes.decode())
-                            except json.JSONDecodeError:
-                                # JSON以外の場合は文字列として扱う
-                                data = message_bytes.decode()
+                                # msgpackデコード
+                                data = msgpack.unpackb(message_bytes, raw=False)
+                            except (msgpack.exceptions.ExtraData, 
+                                    msgpack.exceptions.UnpackException,
+                                    ValueError):
+                                # msgpackデコード失敗時はJSONを試行（後方互換性）
+                                try:
+                                    data = json.loads(message_bytes.decode())
+                                except json.JSONDecodeError:
+                                    # JSONでもない場合は文字列として扱う
+                                    data = message_bytes.decode()
                                 
                             # コールバック実行
                             self.callback(data)

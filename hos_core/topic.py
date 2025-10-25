@@ -2,10 +2,15 @@
 HOSのトピック管理システム（改良版）
 独立したブローカーサービスを使用してmany-to-many通信を実現
 パブリッシャーの再起動に対応した動的再接続機能付き
+
+バイナリシリアライゼーション:
+- msgpackを使用して高速なバイナリエンコーディング/デコーディングを実現
+- JSON形式との後方互換性を維持
 """
 
 import zmq
 import json
+import msgpack
 import threading
 import time
 from typing import Dict, Any, Optional, List, Union
@@ -227,20 +232,31 @@ class Publisher:
                     return False
                     
             try:
-                # メッセージフォーマット
-                if isinstance(message, dict):
-                    message_data = json.dumps(message)
-                elif isinstance(message, str):
-                    message_data = message
-                else:
-                    message_data = json.dumps({"data": str(message)})
+                # メッセージをバイナリにエンコード (msgpack使用)
+                try:
+                    if isinstance(message, str):
+                        # 文字列の場合はdictにラップ
+                        message_bytes = msgpack.packb({"data": message}, use_bin_type=True)
+                    elif isinstance(message, (dict, list, int, float, bool, bytes)):
+                        # msgpackで直接シリアライズ可能な型
+                        message_bytes = msgpack.packb(message, use_bin_type=True)
+                    else:
+                        # その他の型は文字列化してからdictにラップ
+                        message_bytes = msgpack.packb({"data": str(message)}, use_bin_type=True)
+                except (msgpack.exceptions.PackException, TypeError) as e:
+                    # msgpackシリアライズエラー時はログ出力して失敗扱い
+                    print(f"Failed to serialize message with msgpack: {e}")
+                    self._connected = False
+                    if attempt < retry_count - 1:
+                        time.sleep(0.5)
+                    continue
                     
                 # パブリッシュ
                 with self._lock:
                     if self.socket:
                         self.socket.send_multipart([
                             self.topic.encode(),
-                            message_data.encode()
+                            message_bytes
                         ], zmq.NOBLOCK)
                 return True
                 
@@ -358,11 +374,16 @@ class Subscriber:
                             topic_bytes, message_bytes = self.socket.recv_multipart(zmq.NOBLOCK)
                             
                             try:
-                                # JSONデコード
-                                data = json.loads(message_bytes.decode())
-                            except json.JSONDecodeError:
-                                # JSON以外の場合は文字列として扱う
-                                data = message_bytes.decode()
+                                # msgpackデコード
+                                data = msgpack.unpackb(message_bytes, raw=False)
+                            except (msgpack.exceptions.ExtraData, 
+                                    msgpack.exceptions.UnpackException):
+                                # msgpackデコード失敗時はJSONを試行（後方互換性）
+                                try:
+                                    data = json.loads(message_bytes.decode())
+                                except json.JSONDecodeError:
+                                    # JSONでもない場合は文字列として扱う
+                                    data = message_bytes.decode()
                                 
                             # コールバック実行
                             self.callback(data)
